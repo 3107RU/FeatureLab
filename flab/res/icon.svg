@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 256 256">
+   <style>
+      .ellipse {
+         stroke: #c86400;
+         stroke-width: 25;
+      }
+
+      .text {
+         font: bold 192px sans-serif;
+         color: #c86400;
+      }
+   </style>
+   <g>
+      <text class="text" x="75" y="196">3</text>
+      <ellipse class="ellipse" cx="128" cy="128" rx="96" ry="104" />
+   </g>
+</svg>

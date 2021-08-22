@@ -1,0 +1,24 @@
+﻿html:theme(dark) {
+  var(text-color): #fff;
+  var(back-color): #333;
+  var(toolbar-color): #222;
+  var(disabled-color): #aaa;
+  var(border-color): #aaa;
+}
+
+html:theme(light) {
+  var(text-color): #000;
+  var(back-color): #eee;
+  var(toolbar-color): #fff;
+  var(disabled-color): #777;
+  var(border-color): #aaa;
+}
+
+html {
+  var(accent-color): window-accent-color;
+  color: color(text-color);
+  background: color(back-color);
+  font: system;
+  overflow: none;
+  border: window-frame-width solid transparent;
+}

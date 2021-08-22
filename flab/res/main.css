@@ -1,0 +1,108 @@
+﻿@import url(window.css);
+body {
+  margin: 0;
+}
+
+#toolbar {
+  display: block;
+  flow: horizontal;
+  background: color(toolbar-color);
+  border-bottom: 1dip solid color(border-color);
+  vertical-align: baseline;
+}
+
+#toolbar>* {
+  margin: 5dip;
+}
+
+#toolbar>span {
+  font-weight: bold;
+}
+
+#space {
+  width: *;
+}
+
+#content {
+  size: *;
+  position: relative;
+}
+
+#error {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 20dip;
+  font-size: 24dip;
+  font-weight: bold;
+  text-align: center;
+  vertical-align: middle;
+  background-color: red;
+  color: white;
+  border: 2dip solid white;
+  border-radius: 10dip;
+  box-shadow: rgba(0, 0, 0, 0.4) 10dip 10dip;
+  z-index: 100;
+  visibility: hidden;
+}
+
+#images {
+  behavior: virtual-list;
+  size: *;
+  overflow-y: auto;
+  padding: 10dip;
+}
+
+#images div[image] {
+  position: relative;
+  margin: 2dip;
+  display: inline-block;
+  border: 2dip solid color(border-color);
+}
+
+#images div[image]:hover {
+  prototype: ImageHoverAction;
+}
+
+#images div[image] img[main] {
+  size: 150dip;
+  overflow: hidden;
+}
+
+#images div[image] [index] {
+  position: absolute;
+  left: 5dip;
+  top: 5dip;
+  opacity: .5;
+  font-size: 24dip;
+  font-weight: bold;
+  color: white;
+}
+
+#images div[image] [name] {
+  position: absolute;
+  left: 5dip;
+  right: 5dip;
+  bottom: 5dip;
+  opacity: .5;
+  font-size: 12dip;
+  font-weight: bold;
+  text-align: center;
+  text-overflow: ellipsis;
+  color: white;
+}
+
+#images div[image] [command] {
+  position: absolute;
+  padding: 5dip;
+  width: 24dip;
+  height: 24dip;
+  top: 8dip;
+  opacity: .8;
+  visibility: hidden;
+}
+
+#images div[image] [remove] {
+  right: 8dip;
+}

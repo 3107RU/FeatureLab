@@ -1,0 +1,46 @@
+﻿@import url(window.css);
+html {
+  size: 600dip;
+}
+
+body {
+  margin: 0;
+}
+
+#toolbar {
+  display: block;
+  flow: horizontal;
+  background: color(toolbar-color);
+  border-bottom: 1dip solid color(border-color);
+  vertical-align: baseline;
+}
+
+#toolbar>* {
+  margin: 5dip;
+}
+
+#toolbar>span {
+  width: *;
+}
+
+#content {
+  size: *;
+  position: relative;
+}
+
+img[main] {
+  size: *;
+  aspect: MouseHandler;
+  display: block;
+  overflow: hidden;
+  font-size: 10dip;
+  font-weight: bold;
+}
+
+.red {
+  color: rgb(247, 150, 150);
+}
+
+.green {
+  color: rgb(176, 231, 165);
+}

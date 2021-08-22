@@ -1,0 +1,208 @@
+﻿view.windowMinSize = (400,200);
+
+View.db = {}
+var storage = Storage.open(System.path(#USER_APPDATA, "flab.db"));
+if (storage) {
+    if (!storage.root)
+        storage.root = {};
+    View.db = storage.root;
+}
+
+function self.closing() {
+    storage.close();
+    var stopped = view.api.stop();
+    if (!stopped) {
+        self.timer(100ms, function() {
+            view.close();
+            return false;
+        });
+    }
+    return stopped;
+}
+
+function createImage(data) {
+    var div = new Element("div");
+    div.data = data;
+    div.attributes['image'] = "";
+    div.attributes['title'] = data.name;
+    div.$append(<button command remove><img src="remove.png"></button>);
+    div.$append(<span index>{data.index + 1}</span>);
+    div.$append(<span name>{data.name}</span>);
+    var image = div.$append(<img main src="{URL.fromPath(data.file)}"/>);
+    image.paintForeground = function(gfx) {
+        if (image.value) {
+            var (w,h) = image.box(#dimension, #inner);
+            for (var box in data.boxes) {
+                gfx.lineWidth(1).lineColor(color("green")).fillColor(color("transparent"));
+                gfx.rectangle(box.left * w / image.value.width, box.top * h / image.value.height,
+                    box.width * w / image.value.width, box.height * h / image.value.height);
+                gfx.lineWidth(0).fillColor(color("red"));
+                for (var part in box.parts) {
+                    gfx.ellipse(part.x * w / image.value.width, part.y * h / image.value.height, 2);
+                }
+            }
+        }
+    };
+    return div;
+}
+
+function scrollDown(index, n) {
+    var elements = [];
+    var result = view.api.get(index, n);
+    for (var image in result.images)
+        elements.push(createImage(image));
+    $(#images).append(elements);
+    return { moreafter: result.moreafter };
+}
+
+function scrollUp(index, n) {
+    var elements = [];
+    var result = view.api.get(index, -n);
+    for (var image in result.images)
+        elements.push(createImage(image));
+    $(#images).prepend(elements);
+    return { morebefore: result.morebefore };
+}
+
+function scrollTo(index, n) {
+    var elements = [];
+    var result = view.api.get(index, n);
+    for (var image in result.images)
+        elements.push(createImage(image));
+    $(#images).content(elements);
+    return {
+        morebefore: result.morebefore,
+        moreafter: result.moreafter
+    };
+}
+
+$(#images).on("contentrequired", function(evt) {
+    var {length, start, where} = evt.data;
+    if (where > 0)
+        evt.data = scrollDown(start, length);
+    else if (where < 0)
+        evt.data = scrollUp(start, length);
+    else
+        evt.data = scrollTo(start, length);
+    return true;
+});
+
+var loading = false;
+function setLoading(active) {
+    loading = active
+    $(#open).text = active ? "Cancel" : "Open...";
+}
+
+var count = 0;
+function loadCallback(result) {
+    if (result.type == 0) {
+        setLoading(true);
+        $(#menu).state.disabled = true;
+        $(#error).style#visibility = 'hidden';
+        count = 0;
+        $(#count).text = count;
+        $(#images).vlist.navigate("start");
+    } else if (result.type == 1) {
+        count++;
+        if (count % 10 == 0)
+            $(#count).text = count;
+    } else if (result.type == 2) {
+        setLoading(false);
+        $(#error).text = "Open error: " + result.error;
+        $(#error).style#visibility = 'visible';
+        $(#count).text = count;
+        $(#images).vlist.navigate("start");
+    } else if (result.type == 3) {
+        setLoading(false);
+        if (count == 0) {
+            $(#error).text = "No images found";
+            $(#error).style#visibility = 'visible';
+        }
+        $(#count).text = count;
+        $(#images).vlist.navigate("start");
+        $(#menu).state.disabled = false;
+    }
+}
+
+function open(path) {
+    view.api.open(path, loadCallback);
+}
+
+if (view.db.path) {
+    $(#url).value = view.db.path;
+    open(view.db.path);
+}
+
+event click $(#open) {
+    if (!loading) {
+        var url = view.selectFolder();
+        if (url) {
+            view.db.path = URL.toPath(url);
+            $(#url).text = view.db.path;
+            open(view.db.path);
+        }
+    } else
+        view.api.stop();
+}
+
+event dblclick $(#images div[image]) {
+    var data = view.dialog {
+        url: self.url("editor.htm"),
+        parameters: this.data
+    };
+    if (data) {
+        //view.msgbox(#information, JSON.stringify(data));
+        if(view.api.save(data)) {
+            this.data = data;
+            this.update();
+        } else
+            view.msgbox(#alert, "Error writing data for " + data.name, "Save image data");
+    }
+}
+
+event click $(#images div[image] [remove]) {
+    var r = #yes;
+    if (!view.db.skipRemovePrompt) {
+        r = view.msgbox(#question, "Remove file " + this.parent.data.name + "?", "Remove file",
+            [ {id:#no, text:"No"}, {id:#yes, text:"Remove"}, {id:#always, text:"Remove, don't ask"} ]);
+        if (r == #always) {
+            view.db.skipRemovePrompt = true;
+            r = #yes;
+        }
+    }
+    if (r == #yes) {
+        if(view.api.remove(this.parent.data.file))
+            this.parent.remove();
+    }
+}
+
+class ImageHoverAction: Behavior {
+    function attached() {
+        for (var btn in this.$$([command]))
+            btn.style#visibility = "visible";
+    }
+    function detached() {
+        for (var btn in this.$$([command]))
+            btn.style#visibility = "hidden";
+    }
+}
+
+event click $(#menu) {
+    this.popup($(#actions), 1 | (7 << 16));
+}
+
+event click $(menu [command="export"]) {
+    var url = view.selectFile(#save, "Xml files (*.xml)|*.xml|All files (*.*)|*.*", "xml");
+    if (url) {
+        if(!view.api.exportXml(URL.toPath(url)))
+            view.msgbox(#alert, "Error exporting dataset data", "Export dataset data");
+    }
+}
+
+event click $(menu [command="importIBUG"]) {
+    var url = view.selectFile(#load, "Xml files (*.xml)|*.xml|All files (*.*)|*.*", "xml");
+    if (url) {
+        if(!view.api.importFromiBUG(URL.toPath(url), loadCallback))
+            view.msgbox(#alert, "Error importing dataset", "Import dataset from iBUG");
+    }
+}

@@ -1,0 +1,28 @@
+﻿<html window-icon="icon.svg" theme="dark" window-resizable>
+
+<head>
+  <title>FeatureLab</title>
+  <style src="main.css" />
+  <script type="text/tiscript" src="main.tis" />
+  <menu.context #actions>
+    <li command="importIBUG"><label>Import from iBUG</label></li>
+    <li command="export"><label>Export</label></li>
+  </menu>
+</head>
+
+<body>
+  <div#toolbar>
+    <span>Dataset:</span>
+    <span#url>Select dataset folder</span>
+    <span#count></span>
+    <span#space></span>
+      <button#open>Open...</button>
+        <button#menu disabled>&#9776;</button>
+          </div>
+          <div#content>
+            <div#error />
+            <div#images />
+            </div>
+</body>
+
+</html>
