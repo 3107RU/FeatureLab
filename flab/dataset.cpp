@@ -103,7 +103,7 @@ bool Dataset::load(std::wstring path, std::function<void(LoadResult)> cb)
                 cb(result);
             }
 
-            std::vector<std::wstring> exts({L".jpg", L".png"});
+            std::vector<std::wstring> exts({L".jpg", L".jpeg", L".png"});
             for (const auto &entry : std::filesystem::recursive_directory_iterator(current))
             {
                 if (!active)
