@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.5.1)
 
+set(SCITER_STATIC_LIB ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -15,6 +17,10 @@ endif()
 
 project(flab)
 
+if(SCITER_STATIC_LIB)
+add_definitions(-DSTATIC_LIB)
+endif()
+
 set(SOURCES main.cpp dataset.cpp)
 
 add_executable(${PROJECT_NAME} WIN32 ${SOURCES})
@@ -28,6 +34,11 @@ add_custom_target(${PROJECT_NAME}Resources
         ${CMAKE_CURRENT_SOURCE_DIR}/res ${CMAKE_CURRENT_SOURCE_DIR}/resources.cpp
 )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}Resources)
+if(SCITER_STATIC_LIB)
+target_link_directories(${PROJECT_NAME} PRIVATE "$ENV{UVODRIVER_SDK}/sciter/lib.win/x64")
+target_link_libraries(${PROJECT_NAME} PRIVATE wininet debug sciter.static.dbg optimized sciter.static)
+else()
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 COMMAND ${CMAKE_COMMAND} -E copy_if_different
 $ENV{UVODRIVER_SDK}/sciter/bin.win/x64/sciter.dll $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+endif()
