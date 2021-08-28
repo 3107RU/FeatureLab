@@ -32,7 +32,7 @@ function createImage(data) {
     image.paintForeground = function(gfx) {
         if (image.value) {
             var (w,h) = image.box(#dimension, #inner);
-            for (var box in data.boxes) {
+            for (var box in this.parent.data.boxes) {
                 gfx.lineWidth(1).lineColor(color("green")).fillColor(color("transparent"));
                 gfx.rectangle(box.left * w / image.value.width, box.top * h / image.value.height,
                     box.width * w / image.value.width, box.height * h / image.value.height);

@@ -3,49 +3,71 @@ view.windowMaximizable = false;
 view.windowMinSize = (200,200);
 
 var data = view.parameters.clone(true);
-var image = $(img[main]);
+var image = $(#content).loadImage(URL.fromPath(data.file));
 
-var text = new Graphics.Text("00", image);
+var text = new Graphics.Text("00", $(#content));
 const radius = Float.max(5., Float.max(text.width() / 2., text.height() / 2.) + 1.);
 
-image.attributes["src"] = URL.fromPath(data.file);
+var zoom;
+var roi = {x: 0, y: 0, w: image.width, h: image.height};
+var magnifierState = 0; // 0 - inactive, 1 - zooming, 2 - zoomed
 
-image.paintForeground = function(gfx) {
-    var (w,h) = image.box(#dimension, #inner);
+$(#magnifier).paintForeground = function(gfx) {
+    var (w,h) = this.box(#dimension);
+    gfx.fillColor(magnifierState == 2 ? color("green") : (magnifierState == 1 ? color("red") : color("gray")));
+    gfx.noStroke().ellipse(-8, h / 2, 4);
+}
+
+$(#content).paintBackground = function(gfx) {
+    var (w,h) = this.box(#dimension, #inner);
+    gfx.drawImage(image, 0, 0, w, h, roi.x, roi.y, roi.w, roi.h);
+}
+
+$(#content).paintForeground = function(gfx) {
+    var (w,h) = this.box(#dimension, #inner);
+    gfx.pushLayer(0,0,w,h);
     for (var index = 0; index < data.boxes.length; index++) {
         var box = data.boxes[index];
         var last = index == data.boxes.length - 1;
         var clr = last ? color("red") : color("green");
-        gfx.lineWidth(2).lineColor(clr).fillColor(color("transparent"));
-        gfx.rectangle(box.left * w / image.value.width, box.top * h / image.value.height,
-            box.width * w / image.value.width, box.height * h / image.value.height);
-        gfx.lineWidth(0).fillColor(clr);
-        gfx.ellipse(box.left * w / image.value.width, box.top * h / image.value.height, radius);
-        gfx.ellipse((box.left + box.width) * w / image.value.width, box.top * h / image.value.height, radius);
-        gfx.ellipse((box.left + box.width) * w / image.value.width, (box.top + box.height) * h / image.value.height, radius);
-        gfx.ellipse(box.left * w / image.value.width, (box.top + box.height) * h / image.value.height, radius);
+        var bx = (box.left - roi.x) * w / roi.w;
+        var by = (box.top - roi.y) * h / roi.h;
+        var bw = box.width * w / roi.w;
+        var bh = box.height * h / roi.h;
+        gfx.strokeWidth(2).strokeColor(clr).noFill();
+        gfx.rectangle(bx, by, bw, bh);
+        gfx.noStroke().fillColor(clr);
+        gfx.ellipse(bx, by, radius);
+        gfx.ellipse(bx + bw, by, radius);
+        gfx.ellipse(bx + bw, by + bh, radius);
+        gfx.ellipse(bx, by + bh, radius);
         for (var i = 0; i < box.parts.length; i++) {
             var part = box.parts[i];
-            var x = part.x * w / image.value.width;
-            var y = part.y * h / image.value.height;
+            var px = (part.x - roi.x) * w / roi.w;
+            var py = (part.y - roi.y) * h / roi.h;
             text.chars = String.printf("%02d", i + 1);
             text.class = last ? "red" : "green";
-            gfx.ellipse(x, y, radius);
-            gfx.drawText(text, x, y, 5);
+            gfx.ellipse(px, py, radius);
+            gfx.drawText(text, px, py, 5);
         }
     }
+    if (zoom) {
+        gfx.strokeDash(#dashed).strokeWidth(1).strokeColor(color("gray")).noFill();
+        gfx.rectangle(zoom.x, zoom.y, zoom.w, zoom.h);
+    }
+    gfx.popLayer();
 };
 
 event click $(#save) {
     view.close(data);
 }
 
-function MouseHandler() {
-    var paint;
-    this << event mousedown (evt) {
-        var (w,h) = image.box(#dimension, #inner);
+var painter = {
+    paint: null,
+    onMousedown: function (evt) {
+        var (w,h) = $(#content).box(#dimension, #inner);
         var dist2 = (x1,y1,x2,y2) => (x2-x1)*(x2-x1)+(y2-y1)*(y2-y1);
-        var fn = (x,y) => dist2(x * w / image.value.width, y * h / image.value.height, evt.x, evt.y) > radius * radius;
+        var fn = (x,y) => dist2((x - roi.x) * w / roi.w, (y - roi.y) * h / roi.h, evt.x, evt.y) > radius * radius;
         if (evt.buttons == 1) {
             var (index, box) = data.boxes.find((box) => !fn(box.left, box.top) || !fn(box.left + box.width, box.top) ||
                 !fn(box.left + box.width, box.top + box.height) || !fn(box.left, box.top + box.height));
@@ -53,77 +75,136 @@ function MouseHandler() {
                 if (index != data.boxes.length - 1) {
                     data.boxes.remove(index);
                     data.boxes.push(box);
-                    image.update();
+                    $(#content).update();
                 }
                 if (!fn(box.left, box.top))
-                    paint = {box: box, x: (box.left + box.width) * w / image.value.width, y: (box.top + box.height) * h / image.value.height};
+                    this.paint = {box: box, x: (box.left + box.width - roi.x) * w / roi.w, y: (box.top + box.height - roi.y) * h / roi.h};
                 else if (!fn(box.left + box.width, box.top))
-                    paint = {box: box, x: box.left * w / image.value.width, y: (box.top + box.height) * h / image.value.height};
+                    this.paint = {box: box, x: (box.left - roi.x) * w / roi.w, y: (box.top + box.height - roi.y) * h / roi.h};
                 else if (!fn(box.left + box.width, box.top + box.height))
-                    paint = {box: box, x: box.left * w / image.value.width, y: box.top * h / image.value.height};
+                    this.paint = {box: box, x: (box.left - roi.x) * w / roi.w, y: (box.top - roi.y) * h / roi.h};
                 else
-                    paint = {box: box, x: (box.left + box.width) * w / image.value.width, y: box.top * h / image.value.height};
+                    this.paint = {box: box, x: (box.left + box.width - roi.x) * w / roi.w, y: (box.top - roi.y) * h / roi.h};
             }
-            if (!paint)
+            if (!this.paint)
             {
                 for (var box in data.boxes) {
                     var(i, part) = box.parts.find((part) => !fn(part.x, part.y));
                     if (part) {
-                        paint = {part: part};
+                        this.paint = {part: part};
                         break;
                     }
                 }
             }
-            if (!paint)
-                paint = {x: evt.x, y: evt.y};
-            this.capture(true);
+            if (!this.paint)
+                this.paint = {x: evt.x, y: evt.y};
+            $(#content).capture(true);
         }
         else if (evt.buttons == 2) {
             data.boxes = data.boxes.filter((box) => fn(box.left, box.top) && fn(box.left + box.width, box.top) &&
                 fn(box.left + box.width, box.top + box.height) && fn(box.left, box.top + box.height));
             for (var box in data.boxes)
                 box.parts = box.parts.filter((part) => fn(part.x, part.y));
-            image.update();
+            $(#content).update();
         }
 
-    };
-    this << event mousemove (evt) {
-        if (paint) {
-            var (w,h) = image.box(#dimension, #inner);
-            if (!paint.part) {
+    },
+    onMousemove: function(evt) {
+        if (this.paint) {
+            var (w,h) = $(#content).box(#dimension, #inner);
+            if (!this.paint.part) {
                 var dist = (x1,x2) => Math.abs(x2-x1) > radius;
-                if (dist(paint.x, evt.x) && dist(paint.y, evt.y)) {
-                    if (!paint.box)
-                        paint.box = data.boxes.push({parts: []});
-                    paint.box.left = Integer.min(paint.x, evt.x) * image.value.width / w;
-                    paint.box.top = Integer.min(paint.y, evt.y) * image.value.height / h;
-                    paint.box.width = Math.abs(evt.x - paint.x) * image.value.width / w;
-                    paint.box.height = Math.abs(evt.y - paint.y) * image.value.height / h;
+                if (dist(this.paint.x, evt.x) && dist(this.paint.y, evt.y)) {
+                    if (!this.paint.box)
+                        this.paint.box = data.boxes.push({parts: []});
+                    this.paint.box.left = roi.x + Integer.min(this.paint.x, evt.x) * roi.w / w;
+                    this.paint.box.top = roi.y + Integer.min(this.paint.y, evt.y) * roi.h / h;
+                    this.paint.box.width = Math.abs(evt.x - this.paint.x) * roi.w / w;
+                    this.paint.box.height = Math.abs(evt.y - this.paint.y) * roi.h / h;
                 }
             } else {
-                paint.part.x = evt.x * image.value.width / w;
-                paint.part.y = evt.y * image.value.height / h;
+                this.paint.part.x = roi.x + evt.x * roi.w / w;
+                this.paint.part.y = roi.y + evt.y * roi.h / h;
             }
-            image.update();
+            $(#content).update();
         }
-    };
-    this << event mouseup (evt) {
+    },
+    onMouseup: function(evt) {
         if (evt.buttons == 1) {
-            if (paint) {
-                if(!paint.box && !paint.part) {
+            if (this.paint) {
+                if(!this.paint.box && !this.paint.part) {
                     var box = data.boxes.last;
                     if (box) {
-                        var (w,h) = image.box(#dimension, #inner);
-                        box.parts.push({x: evt.x * image.value.width / w,
-                            y: evt.y * image.value.height / h});
-                        image.update();
+                        var (w,h) = $(#content).box(#dimension, #inner);
+                        box.parts.push({x: roi.x + evt.x * roi.w / w,
+                            y: roi.y + evt.y * roi.h / h});
+                        $(#content).update();
                     }
                 }
-                paint = null;
-                this.capture(false); 
+                this.paint = null;
+                $(#content).capture(false); 
             }
         }
+    }
+}
+
+var magnifier = {
+    onMousedown: function(evt) {
+        if (evt.buttons == 1) {
+            zoom = {x: evt.x, y: evt.y, w: 0, h: 0};
+            $(#content).capture(true);
+        }
+    },
+    onMousemove: function(evt) {
+        if (zoom) {
+            zoom.x = Integer.min(zoom.x, evt.x);
+            zoom.y = Integer.min(zoom.y, evt.y);
+            zoom.w = Math.abs(evt.x - zoom.x);
+            zoom.h = Math.abs(evt.y - zoom.y);
+            $(#content).update();
+        }
+    },
+    onMouseup: function(evt) {
+        if (evt.buttons == 1) {
+            if (zoom) {
+                var (w,h) = $(#content).box(#dimension, #inner);
+                roi.x = zoom.x * image.width / w;
+                roi.y = zoom.y * image.height / h;
+                roi.w = zoom.w * image.width / w;
+                roi.h = zoom.h * image.height / h;
+                zoom = null;
+                magnifierState = 2;
+                $(#content).capture(false); 
+                $(#content).update();
+            }
+        }
+    }
+}
+
+function MouseHandler() {
+    this << event mousedown (evt) {
+        if(magnifierState == 1)
+            magnifier.onMousedown(evt);
+        else
+            painter.onMousedown(evt);
     };
-    this << event dblclick (evt) {
+    this << event mousemove (evt) {
+        if(magnifierState == 1)
+            magnifier.onMousemove(evt);
+        else
+            painter.onMousemove(evt);
     };
+    this << event mouseup (evt) {
+        if(magnifierState == 1)
+            magnifier.onMouseup(evt);
+        else
+            painter.onMouseup(evt);
+    };
+}
+
+event click $(#magnifier) {
+    magnifierState = magnifierState ? 0 : 1;
+    roi = {x: 0, y: 0, w: image.width, h: image.height};
+    this.update();
+    $(#content).update();
 }

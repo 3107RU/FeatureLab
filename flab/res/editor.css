@@ -19,6 +19,10 @@ body {
   margin: 5dip;
 }
 
+#magnifier {
+  padding: 0 4dip 1dip 16dip;
+}
+
 #toolbar>span {
   width: *;
 }
@@ -26,12 +30,7 @@ body {
 #content {
   size: *;
   position: relative;
-}
-
-img[main] {
-  size: *;
   aspect: MouseHandler;
-  display: block;
   overflow: hidden;
   font-size: 10dip;
   font-weight: bold;
