@@ -52,6 +52,7 @@ public:
     bool stop(bool wait);
     bool save(std::shared_ptr<Image> image);
     bool remove(std::wstring path);
+    void savePts();
     bool exportXml(std::wstring path);
     bool importFromiBUG(std::wstring path, std::function<void(LoadResult)> cb);
 

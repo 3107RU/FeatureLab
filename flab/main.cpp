@@ -101,6 +101,11 @@ class MainWindow : public sciter::window
         return dataset.save(image);
     }
 
+    void savePts()
+    {
+        return dataset.savePts();
+    }
+
     bool exportXml(std::wstring path)
     {
         return dataset.exportXml(path);
@@ -125,7 +130,7 @@ public:
     SOM_PASSPORT_BEGIN_EX(api, MainWindow)
     SOM_FUNCS(SOM_FUNC(open), SOM_FUNC(get), SOM_FUNC(stop), 
     SOM_FUNC(remove), SOM_FUNC(save), SOM_FUNC(exportXml), 
-    SOM_FUNC(importFromiBUG))
+    SOM_FUNC(importFromiBUG), SOM_FUNC(savePts))
     SOM_PASSPORT_END
 };
 

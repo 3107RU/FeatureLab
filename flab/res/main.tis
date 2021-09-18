@@ -206,3 +206,7 @@ event click $(menu [command="importIBUG"]) {
             view.msgbox(#alert, "Error importing dataset", "Import dataset from iBUG");
     }
 }
+
+event click $(menu [command="savePts"]) {
+    view.api.savePts();
+}

@@ -46,7 +46,7 @@ static std::vector<Dataset::Image::Box> loadBoxes(const std::wstring &file)
     return boxes;
 }
 
-static bool saveImages(std::wstring path, const std::vector<std::shared_ptr<Dataset::Image>> &images)
+static bool saveXml(std::wstring path, const std::vector<std::shared_ptr<Dataset::Image>> &images)
 {
     pugi::xml_document doc;
     pugi::xml_node decl = doc.prepend_child(pugi::node_declaration);
@@ -87,7 +87,7 @@ static std::wstring xmlFileNameFromImageFileName(const std::wstring &file)
 
 bool Dataset::save(std::shared_ptr<Image> image)
 {
-    return saveImages(xmlFileNameFromImageFileName(image->file).c_str(), {image});
+    return  saveXml(xmlFileNameFromImageFileName(image->file).c_str(), {image});
 }
 
 bool Dataset::load(std::wstring path, std::function<void(LoadResult)> cb)
@@ -225,6 +225,32 @@ bool Dataset::remove(std::wstring path)
     return false;
 }
 
+static std::wstring ptsFileNameFromImageFileName(const std::wstring &file)
+{
+    auto ext = std::filesystem::path(file).extension().wstring();
+    return file.substr(0, file.size() - ext.size()) + L".pts";
+}
+
+void Dataset::savePts() {
+    std::vector<std::shared_ptr<Image>> v;
+    {
+        Lock l(mtx);
+        v.assign(images.begin(), images.end());
+    }
+    for (auto image : v) {
+        if (image->boxes.size() == 1) {
+            auto const &parts = image->boxes.front().parts;
+            std::ofstream out(ptsFileNameFromImageFileName(image->file), std::ios::trunc);
+            out << "version: 1\n";
+            out << "n_points: " << parts.size() << "\n";
+            out << "{\n";
+            for (auto const &part : parts)
+                out << part.x << " " << part.y << "\n";
+            out << "}\n";
+        }
+    }
+}
+
 bool Dataset::exportXml(std::wstring path)
 {
     std::vector<std::shared_ptr<Image>> v;
@@ -238,9 +264,9 @@ bool Dataset::exportXml(std::wstring path)
     auto it = v.begin() + v.size() / 10;
     std::filesystem::path p(path);
     auto p0 = p.parent_path() / p.stem();
-    return saveImages(path, v) &&
-           saveImages(p0.wstring() + L"_train" + p.extension().wstring(), {it, v.end()}) &&
-           saveImages(p0.wstring() + L"_test" + p.extension().wstring(), {v.begin(), it});
+    return saveXml(path, v) &&
+           saveXml(p0.wstring() + L"_train" + p.extension().wstring(), {it, v.end()}) &&
+           saveXml(p0.wstring() + L"_test" + p.extension().wstring(), {v.begin(), it});
 }
 
 bool Dataset::importFromiBUG(std::wstring path, std::function<void(LoadResult)> cb)
